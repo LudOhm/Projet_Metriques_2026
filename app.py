@@ -9,11 +9,9 @@ def hello_world():
 
 # Déposez votre code à partir d'ici :
 
-
 @app.route("/contact")
 def MaPremiereAPI():
     return render_template("contact.html")
-
 
 @app.get("/paris")
 def api_paris():
@@ -40,6 +38,33 @@ def mongraphique():
 @app.route("/histogramme")
 def histogramme():
     return render_template("histogramme.html")
+
+@app.get("/atelier-data")
+def atelier_data():
+
+    url = "https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522&daily=precipitation_sum,weathercode&timezone=auto"
+
+    response = requests.get(url)
+    data = response.json()
+
+    precip = data.get("daily", {}).get("precipitation_sum", [])
+    dates = data.get("daily", {}).get("time", [])
+
+    n = min(len(precip), len(dates))
+
+    result = [
+        {
+            "date": dates[i],
+            "precip": precip[i]
+        }
+        for i in range(n)
+    ]
+
+    return jsonify(result)
+
+@app.route("/atelier")
+def atelier():
+    return render_template("atelier.html")
 
 # Ne rien mettre après ce commentaire
     
