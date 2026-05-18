@@ -2,91 +2,214 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>Atelier - Dashboard météo</title>
+  <title>Atelier Météo - Dashboard Humidité</title>
 
   <script src="https://www.gstatic.com/charts/loader.js"></script>
 
   <style>
+    :root{
+      --bg1:#0f172a;
+      --bg2:#1e293b;
+      --card: rgba(255,255,255,0.08);
+      --border: rgba(255,255,255,0.12);
+      --text:#e2e8f0;
+      --muted:#94a3b8;
+    }
+
     body{
-      font-family: Arial;
-      margin: 30px;
-      background: #f5f7fb;
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: radial-gradient(circle at top, var(--bg2), var(--bg1));
+      color: var(--text);
+    }
+
+    header{
+      text-align:center;
+      padding:30px 20px 10px;
     }
 
     h1{
-      text-align:center;
+      margin:0;
+      font-size:28px;
+      letter-spacing:1px;
     }
 
-    #chart{
-      width: 100%;
-      height: 500px;
-      margin-top: 40px;
+    #date{
+      margin-top:8px;
+      color: var(--muted);
+      font-size:14px;
     }
 
-    #status{
+    .container{
+      max-width:1100px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:25px;
+    }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      transition: transform .2s ease;
+    }
+
+    .card:hover{
+      transform: translateY(-5px);
+    }
+
+    .title{
       text-align:center;
+      font-size:18px;
+      margin-bottom:10px;
+    }
+
+    .chart{
+      width:100%;
+      height:320px;
+    }
+
+    .stats{
+      display:flex;
+      justify-content:space-around;
       margin-top:20px;
-      color:#666;
+      text-align:center;
     }
+
+    .stat{
+      background: rgba(255,255,255,0.06);
+      padding:10px 14px;
+      border-radius:12px;
+      min-width:80px;
+    }
+
+    .stat span{
+      display:block;
+      font-size:18px;
+      font-weight:bold;
+    }
+
+    .footer{
+      text-align:center;
+      margin:30px 0;
+      color: var(--muted);
+      font-size:13px;
+    }
+
+    @media (max-width:900px){
+      .grid{
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .fade{
+      animation: fadeIn 0.6s ease-in-out;
+    }
+
+    @keyframes fadeIn{
+      from{opacity:0; transform: translateY(10px);}
+      to{opacity:1; transform: translateY(0);}
+    }
+
   </style>
+
+  <script>
+
+    google.charts.load("current", {packages:["corechart"]});
+    google.charts.setOnLoadCallback(init);
+
+    async function init(){
+      setDate();
+      const data = await fetchData();
+      render(data);
+    }
+
+    function setDate(){
+      const now = new Date();
+      document.getElementById("date").innerText =
+        "📅 " + now.toLocaleDateString("fr-FR", {
+          weekday:"long",
+          year:"numeric",
+          month:"long",
+          day:"numeric"
+        });
+    }
+
+    async function fetchData(){
+      const res = await fetch("/atelier-data");
+      return await res.json();
+    }
+
+    function buildData(city){
+      return google.visualization.arrayToDataTable([
+        ['Niveau', 'Heures'],
+        ['Faible (<40%)', city.low],
+        ['Normal (40-70%)', city.normal],
+        ['Élevé (>70%)', city.high]
+      ]);
+    }
+
+    function render(data){
+
+      drawChart("lilleChart", "💧 Lille", data.lille);
+      drawChart("lyonChart", "💧 Lyon", data.lyon);
+
+    }
+
+    function drawChart(id, title, cityData){
+
+      const chart = new google.visualization.PieChart(
+        document.getElementById(id)
+      );
+
+      chart.draw(buildData(cityData), {
+        title,
+        is3D:true,
+        pieSliceText:"percentage",
+        legend: { position: "bottom", textStyle: { color: "#e2e8f0" } },
+        backgroundColor: "transparent"
+      });
+    }
+
+  </script>
 </head>
 
 <body>
 
-<h1>🌤️ Atelier Météo - Répartition des précipitations</h1>
+<header>
+  <h1>🌦️ Dashboard Humidité</h1>
+  <div id="date"></div>
+</header>
 
-<div id="chart"></div>
-<div id="status"></div>
+<div class="container">
 
-<script>
-google.charts.load('current', { packages:['corechart'] });
-google.charts.setOnLoadCallback(init);
+  <div class="grid fade">
 
-async function init(){
-  const data = await fetchData();
-  drawChart(data);
-}
+    <div class="card">
+      <div class="title">Lille</div>
+      <div id="lilleChart" class="chart"></div>
+    </div>
 
-async function fetchData(){
+    <div class="card">
+      <div class="title">Lyon</div>
+      <div id="lyonChart" class="chart"></div>
+    </div>
 
-  const res = await fetch("/atelier-data");
-  const json = await res.json();
+  </div>
 
-  let pluie = 0;
-  let sec = 0;
+</div>
 
-  json.forEach(d => {
-    if (d.precip > 2) pluie++;
-    else sec++;
-  });
-
-  return [
-    ["Type", "Jours"],
-    ["🌧️ Pluvieux", pluie],
-    ["☀️ Sec", sec]
-  ];
-}
-
-function drawChart(rows){
-
-  const data = google.visualization.arrayToDataTable(rows);
-
-  const options = {
-    title: "Répartition des jours pluvieux vs secs (Paris)",
-    pieHole: 0.4,   // donut chart (différent de ce que tu as déjà utilisé)
-  };
-
-  const chart = new google.visualization.PieChart(
-    document.getElementById("chart")
-  );
-
-  chart.draw(data, options);
-
-  document.getElementById("status").innerText =
-    "Données météo analysées sur 7 jours";
-}
-
-</script>
+<div class="footer">
+  Open-Meteo • Google Charts • Atelier Métriques 2026
+</div>
 
 </body>
 </html>
