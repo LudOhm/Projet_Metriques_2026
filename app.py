@@ -42,29 +42,40 @@ def histogramme():
 @app.get("/atelier-data")
 def atelier_data():
 
-    def get_humidity(lat, lon):
+    def get_city(lat, lon):
+
         url = (
             "https://api.open-meteo.com/v1/forecast"
             f"?latitude={lat}&longitude={lon}"
             "&hourly=relative_humidity_2m"
+            "&current_weather=true"
             "&timezone=auto"
         )
 
         data = requests.get(url).json()
+
+        # humidité (24h)
         humidity = data.get("hourly", {}).get("relative_humidity_2m", [])[:24]
 
         low = sum(1 for h in humidity if h < 40)
         normal = sum(1 for h in humidity if 40 <= h <= 70)
         high = sum(1 for h in humidity if h > 70)
 
-        return {"low": low, "normal": normal, "high": high}
+        # météo actuelle
+        current = data.get("current_weather", {})
 
-    lille = get_humidity(50.6330, 3.0573)
-    lyon = get_humidity(45.7640, 4.8357)
+        return {
+            "low": low,
+            "normal": normal,
+            "high": high,
+            "temp": current.get("temperature"),
+            "weathercode": current.get("weathercode"),
+            "windspeed": current.get("windspeed")
+        }
 
     return jsonify({
-        "lille": lille,
-        "lyon": lyon
+        "lille": get_city(50.6330, 3.0573),
+        "lyon": get_city(45.7640, 4.8357)
     })
 
 @app.route("/atelier")
